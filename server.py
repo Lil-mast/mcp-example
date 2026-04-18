@@ -32,4 +32,4 @@ def greeting_prompt(name: str) -> str:
     return f"Please greet {name} warmly and ask how you can help them today."
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="sse")
