@@ -43,7 +43,7 @@ uv pip install fastmcp
 Use the built-in MCP Inspector to test your server:
 
 ```bash
-uv run fastmcp dev inspector mcp.py
+uv run fastmcp dev inspector server.py
 ```
 
 This will start the MCP Inspector UI where you can interact with your tools:
@@ -53,7 +53,7 @@ This will start the MCP Inspector UI where you can interact with your tools:
 ### Production Mode (SSE transport)
 
 ```bash
-uv run mcp.py --transport sse --port 8000
+uv run server.py --transport sse --port 8000
 ```
 
 ## Available Tools
@@ -69,3 +69,33 @@ uv run mcp.py --transport sse --port 8000
 ## Available Prompts
 
 - **`greeting_prompt(name: str)`** - Creates a warm greeting prompt for the user
+
+## Connect to Claude Desktop
+
+To use your MCP server with Claude Desktop:
+
+1. **Install Claude Desktop** from [claude.ai/download](https://claude.ai/download)
+
+2. **Find your configuration file:**
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+3. **Add your MCP server to the configuration:**
+
+```json
+{
+  "mcpServers": {
+    "hello-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--cwd",
+        "C:\\Users\\admin\\desktop\\mcp-example",
+        "mcp.py"
+      ]
+    }
+  }
+}
+```
+
+4. **Restart Claude Desktop** - Your tools will now be available in conversations!
