@@ -91,7 +91,7 @@ To use your MCP server with Claude Desktop:
         "run",
         "--cwd",
         "C:\\Users\\admin\\desktop\\mcp-example",
-        "mcp.py"
+        "server.py"
       ]
     }
   }
@@ -99,3 +99,158 @@ To use your MCP server with Claude Desktop:
 ```
 
 4. **Restart Claude Desktop** - Your tools will now be available in conversations!
+
+---
+
+## Next Steps
+
+### Debugging the MCP Server with Claude
+
+If your tools don't appear in Claude Desktop:
+
+1. **Check the MCP server logs** in Claude Desktop:
+   - Open Claude → **Settings** → **Developer** → **MCP Servers**
+   - Look for error messages under `hello-mcp`
+
+2. **Verify the server starts manually**:
+   ```bash
+   uv run server.py
+   ```
+   Should show: `Uvicorn running on http://127.0.0.1:8000`
+
+3. **Test with MCP Inspector** (no API key needed):
+   ```bash
+   npx @modelcontextprotocol/inspector uv run server.py
+   ```
+   Then open the URL shown and manually test your tools.
+
+4. **Common issues**:
+   - Config file in wrong location (must be `%APPDATA%\Claude\claude_desktop_config.json` on Windows)
+   - Path to project directory is incorrect
+   - `uv` not in PATH for Claude Desktop process
+   - Firewall blocking localhost connections
+
+5. **Enable verbose logging**:
+   Add `"env": { "LOG_LEVEL": "debug" }` to your mcp server config.
+
+### Integrating a Voice Agent
+
+To build a voice-activated agent that uses your MCP server:
+
+**Architecture Overview:**
+
+```
+[Voice Input] → [STT: Whisper/Deepgram] → [LLM + MCP Tools] → [TTS: ElevenLabs/OpenAI] → [Voice Output]
+```
+
+**Option A: Local Voice Agent (Python)**
+
+Install dependencies:
+```bash
+uv pip install openai-whisper speechrecognition pyttsx3 pyaudio sounddevice
+```
+
+Create `voice_agent.py`:
+```python
+import whisper
+import speech_recognition as sr
+import openai
+from openai import OpenAI
+import sounddevice as sd
+import numpy as np
+
+# Load your MCP server via stdio or HTTP
+MCP_SERVER_URL = "http://localhost:8000/sse"
+
+class VoiceAgent:
+    def __init__(self):
+        self.stt = whisper.load_model("base")
+        self.recognizer = sr.Recognizer()
+        self.tts_client = OpenAI()  # For TTS
+        
+    def listen(self):
+        """Capture audio from microphone"""
+        with sr.Microphone() as source:
+            audio = self.recognizer.listen(source)
+            return audio
+    
+    def transcribe(self, audio):
+        """Speech to text"""
+        text = self.recognizer.recognize_whisper(audio)
+        return text
+    
+    def think(self, text):
+        """Send to LLM with MCP tools enabled"""
+        # Connect to your MCP server and use tools
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": text}],
+            tools=[mcp_tools],  # Your MCP tools here
+        )
+        return response.choices[0].message.content
+    
+    def speak(self, text):
+        """Text to speech"""
+        response = self.tts_client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=text
+        )
+        # Play audio
+        
+    def run(self):
+        while True:
+            audio = self.listen()
+            text = self.transcribe(audio)
+            reply = self.think(text)
+            self.speak(reply)
+
+if __name__ == "__main__":
+    agent = VoiceAgent()
+    agent.run()
+```
+
+**Option B: Web-Based Voice Agent**
+
+Use the Web Speech API + your HTTP-exposed MCP server:
+
+```javascript
+// Frontend voice agent
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.onresult = async (event) => {
+  const transcript = event.results[0][0].transcript;
+  
+  // Send to backend with MCP server connection
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message: transcript })
+  });
+  
+  const reply = await response.json();
+  speak(reply.text); // Web Speech API TTS
+};
+
+function speak(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  window.speechSynthesis.speak(utterance);
+}
+```
+
+**Option C: Existing Frameworks**
+
+- **LiveKit Agents**: https://github.com/livekit/agents
+- **VAPI**: https://vapi.ai (managed)
+- **Retell**: https://retellai.com (managed)
+
+**Testing Your Voice Agent:**
+
+1. Start your MCP server: `uv run server.py`
+2. Start ngrok for remote access: `ngrok http 8000`
+3. Update your voice agent to use the ngrok URL
+4. Speak a command: "What time is it?" or "Calculate 15 times 23"
+5. Verify the agent calls your MCP tools and responds verbally
+
+**Cost-Effective Options (Free Tiers):**
+- STT: Whisper (local, free) or AssemblyAI ($50 credit free)
+- LLM: Ollama (local, free) or OpenRouter (pay-as-you-go)
+- TTS: Piper TTS (local, free) or Coqui TTS

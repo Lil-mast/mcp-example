@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hello-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--cwd",
+        "C:\\Users\\admin\\desktop\\mcp-example",
+        "server.py"
+      ]
+    }
+  }
+}
